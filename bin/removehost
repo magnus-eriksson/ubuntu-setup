@@ -1,0 +1,59 @@
+#!/bin/bash
+
+if [ "$(id -u)" != "0" ]; then
+    echo "Sorry, you must call this command as root or with sudo"
+    exit 1
+fi
+
+# Default paths
+wwwroot="/var/www/"
+apache_path="/etc/apache2"
+
+if [ -z $1 ]
+then
+    echo "You must enter the hostname as first argument."
+    echo "Usage: ./removesite hostname"
+    exit;
+fi
+
+#hname="$1"
+hname="${1%/}"
+echo "$hname"
+site_available="$apache_path/sites-available/$hname.conf"
+site_root="$wwwroot/$hname"
+error="false"
+
+if [ ! -d "$site_root" ]
+then
+    echo "www_root not found: $site_root"
+    error="true"
+fi
+
+if [ ! -e "$site_available" ]
+then
+    echo "vhost not found: $site_available"
+    error="true"
+fi
+
+if [ "true" == "$error" ]
+then
+    echo "Errors. Exiting."
+    exit
+fi
+
+echo -n "Disable the vhost: "
+a2dissite "$hname.conf"
+echo "Done"
+
+echo -n "Remove the site root: "
+rm -R "$site_root"
+echo "Done"
+
+echo -n "Remove the vhost config: "
+rm "$site_available"
+echo "Done"
+
+echo -n "Restart Apache: "
+apache2ctl restart
+echo "Done"
+

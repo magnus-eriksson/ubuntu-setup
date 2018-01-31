@@ -1,0 +1,71 @@
+#!/bin/bash
+
+if [ -z $1 ]
+then
+    echo "You must enter the php version to use"
+    echo "Usage: ./use-php 7.0|7.1|7.2"
+        exit;
+fi
+
+version="$1"
+currentOut=$(php -v 2>&1)
+current=""
+
+if [[ $currentOut == *"PHP 7.0"* ]]
+then
+    current="7.0"
+elif [[ $currentOut == *"PHP 7.1"* ]]
+then
+    current="7.1"
+elif [[ $currentOut == *"PHP 7.2"* ]]
+then
+    current="7.2"
+fi
+
+if [[ -z $current ]]
+then
+    # If current is empty, we couldn't find the correct PHP version
+    echo "Could not determine the current php version"
+    exit 1
+fi
+
+
+if [[ $current == $version ]]
+then
+    # The requested version is already the enabled one
+    echo "PHP $current is already enabled"
+    exit 1;
+fi
+
+bin="/usr/bin/php$version"
+alt="/etc/alternatives/php"
+mod="/etc/apache2/mods-available/php$current.load"
+
+if [[ ! -f $bin  ]]
+then
+    # Couldn't find the cli-file for this version.
+    # To make sure we don't have different version in cli and apache, abort.
+    echo "Could not find the file $bin. Aborting."
+    exit 1;
+fi
+
+if [[ ! -f $mod  ]]
+then
+    # Couldn't fint the apache-mod file for this version.
+    # To make sure we don't have different version in cli and apache, abort.
+    echo "Could not find the apache module $mod. Aborting."
+    exit 1;
+fi
+
+echo "Disable current PHP module"
+"$(a2dismod php$current)" >/dev/null 2>&1
+
+echo "Enable PHP $version module"
+"$(a2enmod php$version)" >/dev/null 2>&1
+echo "Restart apache"
+apache2ctl restart
+
+echo "Update php-cli reference"
+"$(ln -sf $bin $alt)" >/dev/null 2>&1
+echo "PHP $version is now enabled"
+
